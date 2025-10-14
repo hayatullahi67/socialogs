@@ -43,7 +43,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* ✅ MOBILE HEADER UPDATED */}
         <div className="lg:hidden p-4 bg-white border-b flex items-center justify-between">
           {/* Left side: logo text */}
-                  <div className="text-lg font-semibold text-gray-800">
+                  <div className="text-lg font-semibold text-gray-800 ml-6">
                       <Image
                                src={'/image/DeSocial Plug AW2.png'}
                               width={100}
