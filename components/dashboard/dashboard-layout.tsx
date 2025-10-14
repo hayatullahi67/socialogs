@@ -45,7 +45,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Left side: logo text */}
                   <div className="text-lg font-semibold text-gray-800">
                       <Image
-                               src={'/image/DeSocial Plug A11.png'}
+                               src={'/image/DeSocial Plug AW2.png'}
                               width={100}
                               height={100}
                               alt="Logo"
@@ -57,10 +57,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             {/* Notifications dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-gray-100 bg-gray-100">
-                  <Bell className="w-5 h-5 text-gray-700" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </Button>
+                <Button
+                variant="ghost"
+                size="icon"
+                className="relative rounded-full hover:bg-gray-100 bg-gray-100 border ring-2 ring-gray-200 md:bg-transparent"
+              >
+                <Bell className="w-5 h-5 text-gray-700" />
+                {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span> */}
+              </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-md">
                 <DropdownMenuLabel>Notifications</DropdownMenuLabel>
@@ -93,14 +97,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant="ghost"
-                  className="relative h-9 w-9 md:h-10 md:w-10 rounded-full p-0 hover:bg-gray-100 ring-2 ring-gray-200"
-                >
-                  <Avatar className="h-9 w-9 md:h-10 md:w-10">
-                     <AvatarImage src="/image/avater.jpeg" />
-                    <AvatarFallback className="bg-primary text-white">DT</AvatarFallback>
-                  </Avatar>
-                </Button>
+                variant="ghost"
+                className="relative h-10 w-10 md:h-12 md:w-12 rounded-full p-0 hover:bg-gray-100 ring-2 ring-gray-200"
+              >
+                <Avatar className="h-9 w-9 md:h-10 md:w-10">
+                  <AvatarImage src="/image/avater.jpeg" />
+                  <AvatarFallback className="bg-primary text-white">DT</AvatarFallback>
+                </Avatar>
+              </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[280px] p-4">
                 {/* User info section */}
