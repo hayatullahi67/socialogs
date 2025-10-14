@@ -1,4 +1,5 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import Image from "next/image"
 
 export function FAQSection() {
   return (
@@ -8,11 +9,13 @@ export function FAQSection() {
           <div className="lg:grid lg:grid-cols-2 lg:gap-12 xl:gap-16">
             <div className="hidden lg:flex lg:items-center lg:justify-center">
               <div className="relative h-[500px] w-full max-w-md overflow-hidden rounded-3xl">
-                <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo-output%20%281%29-yLtocemJjn25mk7857AzGVGfsnHSwz.jpeg"
-                  alt="Customer support representative"
-                  className="h-full w-full object-cover"
-                />
+                <Image
+                            src={'/image/logsImg.png'}
+                           width={100}
+                           height={100}
+                           alt="Logo"
+                           className="h-full w-full object-cover"
+                           />
               </div>
             </div>
 
@@ -85,11 +88,13 @@ export function FAQSection() {
 
               <div className="mt-12 flex justify-center lg:hidden">
                 <div className="relative h-64 w-64 overflow-hidden rounded-3xl">
-                  <img
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo-output%20%281%29-yLtocemJjn25mk7857AzGVGfsnHSwz.jpeg"
-                    alt="Customer support representative"
-                    className="h-full w-full object-cover"
-                  />
+                 <Image
+                            src={'/image/logsImg.png'}
+                           width={100}
+                           height={100}
+                           alt="Logo"
+                           className="h-full w-full object-cover"
+                           />
                 </div>
               </div>
             </div>

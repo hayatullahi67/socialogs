@@ -21,7 +21,7 @@ export function DashboardHeader() {
       <div className="flex items-center justify-between">
               <div className="hidden md:block text-xl font-bold text-primary">
                   <Image
-                     src={'/image/DeSocial Plug A11.png'}
+                     src={'/image/DeSocial Plug AW2.png'}
                     width={100}
                     height={100}
                     alt="Logo"
@@ -146,7 +146,7 @@ export function DashboardHeader() {
               </div>
 
               {/* Logout button */}
-              <button className="w-full flex items-center justify-center gap-2 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+              <button className="w-full flex gap-2 py-2 text-red-500 rounded-lg transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
