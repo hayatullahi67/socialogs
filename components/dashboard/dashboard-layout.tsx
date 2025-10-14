@@ -53,14 +53,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                             /></div>
 
           {/* Right side: icons + hamburger */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3.5">
             {/* Notifications dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                 variant="ghost"
                 size="icon"
-                className="relative rounded-full hover:bg-gray-100 bg-gray-100 border ring-2 ring-gray-200 md:bg-transparent"
+                className="relative rounded-full border  border-gray-200 md:bg-transparent"
               >
                 <Bell className="w-5 h-5 text-gray-700" />
                 {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span> */}
@@ -98,7 +98,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button
                 variant="ghost"
-                className="relative h-10 w-10 md:h-12 md:w-12 rounded-full p-0 hover:bg-gray-100 ring-2 ring-gray-200"
+                className="relative h-12 w-12 md:h-12 md:w-12 rounded-full p-0  border border-gray-200"
               >
                 <Avatar className="h-9 w-9 md:h-10 md:w-10">
                   <AvatarImage src="/image/avater.jpeg" />
