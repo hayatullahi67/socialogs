@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { CreditCard, Gem } from "lucide-react"
+import { ChevronDown, CreditCard, Gem } from "lucide-react"
 
 export function StatsCards() {
   return (
@@ -43,17 +43,20 @@ export function StatsCards() {
       </div>
 
       {/* Account Status Card */}
-      <div className="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="p-2 md:p-3 bg-blue-50 rounded-lg md:rounded-xl flex-shrink-0">
-           <Gem color="blue"/>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs md:text-sm text-gray-600">Referral Balance</div>
-            <div className="text-lg md:text-2xl font-bold text-gray-900">₦ 0</div>
-          </div>
-        </div>
+    <div className="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
+  <div className="flex items-center justify-between gap-2 md:gap-4">
+    <div className="flex items-center gap-2 md:gap-4">
+      <div className="p-2 md:p-3 bg-blue-50 rounded-lg md:rounded-xl flex-shrink-0">
+        <Gem color="blue" />
       </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs md:text-sm text-gray-600">Referral Balance</div>
+        <div className="text-lg md:text-2xl font-bold text-gray-900">₦ 0</div>
+      </div>
+    </div>
+    <ChevronDown className="h-5 w-5 text-gray-500" />
+  </div>
+</div>
     </div>
   )
 }
