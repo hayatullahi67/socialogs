@@ -129,7 +129,7 @@ export function Header() {
           open ? "translate-x-0" : "translate-x-full",
         )}
       >
-        <div className="h-full flex flex-col bg-gradient-to-b from-blue-600 to-blue-500 text-white">
+        <div className="h-full flex flex-col bg-primary text-white">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-3">
               <Image
