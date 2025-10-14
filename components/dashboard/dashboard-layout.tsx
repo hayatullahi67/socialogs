@@ -166,7 +166,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
 
-                <button className="w-full flex items-center justify-center gap-2 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                <button className="w-full flex gap-2 py-2 text-red-500 rounded-lg transition-colors">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
