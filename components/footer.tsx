@@ -13,25 +13,22 @@ export function Footer() {
           </div>
 
           {/* Links Section */}
-          <div className="flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground sm:flex-row sm:gap-6">
-            <a href="#" className="hover:text-foreground transition-colors">
+          <div className="flex flex-col items-center justify-center text-sm text-muted-foreground gap-4 sm:flex-row sm:flex-wrap sm:gap-6">
+            <a href="#" className="hover:text-foreground transition-colors text-center w-full sm:w-auto">
               Privacy Policy
             </a>
-            <span className="hidden sm:block">•</span>
-            <a href="#" className="hover:text-foreground transition-colors">
+            <a href="#" className="hover:text-foreground transition-colors text-center w-full sm:w-auto">
               Terms and Conditions
             </a>
-            <span className="hidden sm:block">•</span>
-            <a href="#" className="hover:text-foreground transition-colors">
+            <a href="#" className="hover:text-foreground transition-colors text-center w-full sm:w-auto">
               Terms of Use
             </a>
-            <span className="hidden sm:block">•</span>
-            <a href="#" className="hover:text-foreground transition-colors">
+            <a href="#" className="hover:text-foreground transition-colors text-center w-full sm:w-auto">
               Rules & FAQs
             </a>
           </div>
 
-        
+         
         </div>
       </div>
     </footer>
