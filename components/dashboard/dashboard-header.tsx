@@ -19,7 +19,7 @@ export function DashboardHeader() {
   return (
     <div className="sticky top-0 z-50 bg-white border-b px-4 md:px-6 py-3 md:py-4">
       <div className="flex items-center justify-between">
-              <div className="hidden md:block text-xl font-bold text-primary">
+              {/* <div className="hidden md:block text-xl font-bold text-primary">
                   <Image
                      src={'/image/DeSocial Plug AW2.png'}
                     width={100}
@@ -27,7 +27,7 @@ export function DashboardHeader() {
                     alt="Logo"
                     className="w-[17%]"
                   />
-              </div>
+              </div> */}
 
         <div className="flex items-center gap-2 md:gap-3 ml-auto">
           {/* Notifications dropdown */}
@@ -36,7 +36,7 @@ export function DashboardHeader() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative rounded-full hover:bg-gray-100 bg-gray-100 border ring-2 ring-gray-200 md:bg-transparent"
+                className="relative rounded-full border border-gray-200 md:bg-transparent"
               >
                 <Bell className="w-5 h-5 text-gray-700" />
                 {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span> */}
@@ -72,7 +72,7 @@ export function DashboardHeader() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="relative h-10 w-10 md:h-12 md:w-12 rounded-full p-0 hover:bg-gray-100 ring-2 ring-gray-200"
+                className="relative h-10 w-10 md:h-12 md:w-12 rounded-full p-0 border border-gray-200"
               >
                 <Avatar className="h-9 w-9 md:h-10 md:w-10">
                   <AvatarImage src="/image/avater.jpeg" />

@@ -27,9 +27,9 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
          <Image
                        src="/image/DeSocial Plug A23.png"
                        width={120}
-                       height={36}
+                       height={70}
                        alt="Logo"
-                       className="w-auto h-8 object-contain"
+                       className="w-auto h-11 object-contain"
                      />
         </div>
         {onClose && (
