@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { LayoutDashboard, ShoppingBag, Wallet, Receipt, Users, MessageCircle, UsersRound, X, ShoppingBasket, ArrowLeftRight, Headset, Handshake } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Image from "next/image"
 
 const menuItems = [
   { icon: ShoppingBasket, label: "Purchases", href: "/purchases" },
@@ -19,18 +20,17 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
 
   return (
-    <div className="h-full bg-primary flex flex-col">
+    <div className="h-full bg-[#1a49ee] flex flex-col">
       {/* Profile section */}
       <div className="p-6 flex items-center justify-between border-b border-blue-600">
         <div className="flex items-center gap-3">
-          <Avatar className="w-12 h-12">
-            <AvatarImage src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo-output%20%281%29-rZQL35HK9lMhCTcsO6vMbz21vPenWC.png" />
-            <AvatarFallback className="bg-blue-700 text-white">DT</AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="font-semibold text-white">dev_topper</div>
-            <div className="text-xs text-blue-200">Edit Profile</div>
-          </div>
+         <Image
+                       src="/image/DeSocial Plug A23.png"
+                       width={120}
+                       height={36}
+                       alt="Logo"
+                       className="w-auto h-8 object-contain"
+                     />
         </div>
         {onClose && (
           <button onClick={onClose} className="lg:hidden">
@@ -42,11 +42,11 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       {/* Menu items */}
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
         <Link
-          href="/new-order"
+          href="/dashboard"
           className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-700 text-white hover:bg-blue-800 transition-colors"
         >
           <ShoppingBag className="w-5 h-5" />
-          <span className="font-medium">Order</span>
+          <span className="font-medium">Dashboard</span>
         </Link>
 
         {menuItems.map((item) => {

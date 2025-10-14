@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 
 export function HeroSection() {
   return (
@@ -25,7 +26,9 @@ export function HeroSection() {
             size="lg"
             className="h-12 w-full rounded-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90 sm:h-14 sm:text-lg lg:w-auto lg:px-8"
           >
+            <Link href="/register">
             Create an account
+            </Link>
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
           <Button
@@ -33,7 +36,9 @@ export function HeroSection() {
             variant="outline"
             className="h-12 w-full rounded-full border-2 border-primary text-base font-semibold text-primary hover:bg-primary/5 sm:h-14 sm:text-lg bg-transparent lg:w-auto lg:px-8"
           >
+            <Link href="/login">
             Login
+            </Link>
           </Button>
         </div>
 

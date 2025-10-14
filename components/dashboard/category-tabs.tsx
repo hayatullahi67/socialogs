@@ -39,7 +39,7 @@ export function CategoryTabs() {
               "rounded-full px-4 py-2 text-[12px] whitespace-nowrap transition-all mt-1.5 duration-150 ease-in-out focus:outline-none",
               // Selected pill styling: thin blue outline, slightly filled white, blue text
               isActive
-                ? "text-blue-600 bg-white ring-2 ring-blue-200/70 shadow-[0_1px_0_rgba(0,0,0,0.02)]"
+                ? "text-blue-600 bg-[#DBEBFE] ring-2 ring-blue-200/70 shadow-[0_1px_0_rgba(0,0,0,0.02)]"
                 // Unselected: light gray text (light-looking), no heavy background
                 : "text-gray-400 hover:text-gray-600"
             )}
