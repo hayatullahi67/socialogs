@@ -1,13 +1,109 @@
 "use client"
 
 import Link from "next/link"
-import { User, Mail, Lock, Eye, EyeOff } from "lucide-react"
+import { User, Mail, Lock, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Modal } from "@/components/ui/modal"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { signUpWithFirebase } from "@/lib/firebase-auth"
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: ''
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: 'success' as 'success' | 'error',
+    title: '',
+    message: ''
+  })
+  const router = useRouter()
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Basic validation
+    if (!formData.username || !formData.email || !formData.password) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fill in all fields'
+      })
+      return
+    }
+
+    if (formData.password.length < 6) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Password must be at least 6 characters long'
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const result = await signUpWithFirebase(
+        formData.email,
+        formData.password,
+        formData.username
+      )
+
+      if (result.success) {
+        setModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Registration Successful!',
+          message: 'Your account has been created successfully. Redirecting to login...'
+        })
+        
+        // Reset form
+        setFormData({ username: '', email: '', password: '' })
+        
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          router.push('/login')
+        }, 2000)
+      } else {
+        setModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Registration Failed',
+          message: result.message || 'Something went wrong. Please try again.'
+        })
+      }
+    } catch (error: any) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Error',
+        message: error.message || 'An unexpected error occurred'
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const closeModal = () => {
+    setModal(prev => ({ ...prev, isOpen: false }))
+  }
 
   return (
     <div className="min-h-screen flex bg-white">
@@ -20,15 +116,19 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          <form className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="relative group">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary transition-transform group-focus-within:scale-110">
                 <User className="w-5 h-5" />
               </div>
               <Input
                 type="text"
+                name="username"
                 placeholder="Username"
-                className="pl-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all"
+                value={formData.username}
+                onChange={handleInputChange}
+                disabled={isLoading}
+                className="pl-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all disabled:opacity-50"
               />
             </div>
 
@@ -38,8 +138,12 @@ export default function RegisterPage() {
               </div>
               <Input
                 type="email"
+                name="email"
                 placeholder="Email"
-                className="pl-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all"
+                value={formData.email}
+                onChange={handleInputChange}
+                disabled={isLoading}
+                className="pl-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all disabled:opacity-50"
               />
             </div>
 
@@ -49,13 +153,18 @@ export default function RegisterPage() {
               </div>
               <Input
                 type={showPassword ? "text" : "password"}
+                name="password"
                 placeholder="Password"
-                className="pl-12 pr-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all"
+                value={formData.password}
+                onChange={handleInputChange}
+                disabled={isLoading}
+                className="pl-12 pr-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors"
+                disabled={isLoading}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -63,9 +172,10 @@ export default function RegisterPage() {
 
             <Button
               type="submit"
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-xl text-lg font-semibold mt-6 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              disabled={isLoading}
+              className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-xl text-lg font-semibold mt-6 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              REGISTER →
+              {isLoading ? "REGISTERING..." : "REGISTER →"}
             </Button>
           </form>
 
@@ -128,6 +238,40 @@ export default function RegisterPage() {
           </div>
         </div>
       </div>
+
+      {/* Success/Error Modal */}
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        title={modal.title}
+      >
+        <div className="text-center">
+          <div className="mb-4">
+            {modal.type === 'success' ? (
+              <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+            ) : (
+              <XCircle className="w-16 h-16 text-red-500 mx-auto" />
+            )}
+          </div>
+          <p className="text-gray-600 mb-6">{modal.message}</p>
+          <div className="flex gap-3">
+            <Button
+              onClick={closeModal}
+              className="flex-1"
+              variant={modal.type === 'success' ? 'default' : 'outline'}
+            >
+              {modal.type === 'success' ? 'Continue' : 'Try Again'}
+            </Button>
+            {modal.type === 'success' && (
+              <Link href="/login" className="flex-1">
+                <Button className="w-full" variant="outline">
+                  Go to Login
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

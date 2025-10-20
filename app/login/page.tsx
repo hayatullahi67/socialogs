@@ -1,13 +1,115 @@
 "use client"
 
 import Link from "next/link"
-import { Mail, Lock, Eye, EyeOff } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Mail, Lock, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Modal } from "@/components/ui/modal"
+import { signInWithFirebase } from "@/lib/firebase-auth"
+// import { signInWithPopup } from "firebase/auth"
 import { useState } from "react"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: 'success' as 'success' | 'error',
+    title: '',
+    message: ''
+  })
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Basic validation
+    if (!formData.email || !formData.password) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fill in all fields'
+      })
+      return
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please enter a valid email address'
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const result = await signInWithFirebase(
+        formData.email,
+        formData.password
+      )
+
+      if (result.success) {
+        setModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Login Successful!',
+          message: 'Welcome back! Redirecting to dashboard...'
+        })
+
+        // Store user info in localStorage if needed
+        if (result.user) {
+          localStorage.setItem('user', JSON.stringify({
+            uid: result.user.uid,
+            email: result.user.email
+          }))
+        }
+
+        // Redirect to dashboard after 1.5 seconds
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1500)
+      } else {
+        setModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Login Failed',
+          message: result.message || 'Invalid email or password'
+        })
+      }
+    } catch (error: any) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Error',
+        message: error.message || 'An unexpected error occurred'
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const closeModal = () => {
+    setModal(prev => ({ ...prev, isOpen: false }))
+  }
 
   return (
     <div className="min-h-screen flex bg-white">
@@ -20,15 +122,19 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="relative group">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary transition-transform group-focus-within:scale-110">
                 <Mail className="w-5 h-5" />
               </div>
               <Input
                 type="email"
+                name="email"
                 placeholder="Email"
-                className="pl-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all"
+                value={formData.email}
+                onChange={handleInputChange}
+                disabled={isLoading}
+                className="pl-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all disabled:opacity-50"
               />
             </div>
 
@@ -38,13 +144,18 @@ export default function LoginPage() {
               </div>
               <Input
                 type={showPassword ? "text" : "password"}
+                name="password"
                 placeholder="Password"
-                className="pl-12 pr-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all"
+                value={formData.password}
+                onChange={handleInputChange}
+                disabled={isLoading}
+                className="pl-12 pr-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors"
+                disabled={isLoading}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -54,7 +165,8 @@ export default function LoginPage() {
               <label className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
-                  className="rounded border-gray-300 text-primary focus:ring-primary transition-all"
+                  disabled={isLoading}
+                  className="rounded border-gray-300 text-primary focus:ring-primary transition-all disabled:opacity-50"
                 />
                 <span className="text-gray-600 group-hover:text-gray-900">Remember me</span>
               </label>
@@ -65,9 +177,10 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-xl text-lg font-semibold mt-6 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              disabled={isLoading}
+              className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-xl text-lg font-semibold mt-6 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              LOGIN →
+              {isLoading ? "LOGGING IN..." : "LOGIN →"}
             </Button>
           </form>
 
@@ -130,6 +243,42 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* Success/Error Modal */}
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        title={modal.title}
+      >
+        <div className="text-center">
+          <div className="mb-4">
+            {modal.type === 'success' ? (
+              <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+            ) : (
+              <XCircle className="w-16 h-16 text-red-500 mx-auto" />
+            )}
+          </div>
+          <p className="text-gray-600 mb-6">{modal.message}</p>
+          <div className="flex gap-3">
+            <Button
+              onClick={closeModal}
+              className="flex-1"
+              variant={modal.type === 'success' ? 'default' : 'outline'}
+            >
+              {modal.type === 'success' ? 'Continue' : 'Try Again'}
+            </Button>
+            {modal.type === 'success' && (
+              <Button
+                onClick={() => router.push('/dashboard')}
+                className="flex-1"
+                variant="outline"
+              >
+                Go to Dashboard
+              </Button>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

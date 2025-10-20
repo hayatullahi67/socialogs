@@ -11,10 +11,6 @@ const categories = [
   "Facebook USA",
   "Facebook Dating",
   "Facebook Target",
-  "Facebook Taret",
-  "Facebook Taret",
-  "Facebook Targe",
-  "Facebook arget",
 ]
 
 export function CategoryTabs() {
