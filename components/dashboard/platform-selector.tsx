@@ -18,6 +18,8 @@
 //   { id: "other", name: "Other Platforms", icon: MoreHorizontal },
 // ]
 
+
+
 // export function PlatformSelector() {
 //   const [selected, setSelected] = useState("all")
 
@@ -32,7 +34,7 @@
 //               key={platform.id}
 //               variant="outline"
 //               className={cn(
-//                 "h-auto py-2 md:py-3 px-3 md:px-4 flex items-center justify-center gap-2 rounded-lg md:rounded-[10px] transition-all font-medium text-xs md:text-sm",
+//                 "h-auto py-2 md:py-3 px-3 md:px-4 flex items-center justify-center gap-2 rounded-lg md:rounded-xl transition-all font-medium text-xs md:text-sm",
 //                 selected === platform.id
 //                   ? "bg-primary text-white border-primary hover:bg-primary/90 hover:text-white"
 //                   : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
@@ -53,7 +55,6 @@
 
 "use client"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Instagram, Facebook, Music, Twitter, Linkedin, Mic, Ghost, Shield, MoreHorizontal } from "lucide-react"
@@ -71,9 +72,12 @@ const platforms = [
   { id: "other", name: "Other Platforms", icon: MoreHorizontal },
 ]
 
-export function PlatformSelector() {
-  const [selected, setSelected] = useState("all")
+interface PlatformSelectorProps {
+  selectedPlatform: string
+  onPlatformChange: (platformId: string) => void
+}
 
+export function PlatformSelector({ selectedPlatform, onPlatformChange }: PlatformSelectorProps) {
   return (
     <div>
       <h2 className="text-sm md:text-base font-semibold text-gray-900 mb-3 md:mb-4 pb-2 border-b">Select a Platform</h2>
@@ -86,11 +90,11 @@ export function PlatformSelector() {
               variant="outline"
               className={cn(
                 "h-auto py-2 md:py-3 px-3 md:px-4 flex items-center justify-center gap-2 rounded-lg md:rounded-xl transition-all font-medium text-xs md:text-sm",
-                selected === platform.id
+                selectedPlatform === platform.id
                   ? "bg-primary text-white border-primary hover:bg-primary/90 hover:text-white"
                   : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
               )}
-              onClick={() => setSelected(platform.id)}
+              onClick={() => onPlatformChange(platform.id)}
             >
               {Icon && <Icon className="w-4 h-4 md:w-5 md:h-5" />}
               <span className="text-xs md:text-sm">{platform.name}</span>
