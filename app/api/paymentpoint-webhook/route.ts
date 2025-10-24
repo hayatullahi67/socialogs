@@ -158,19 +158,33 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/firebase"
 import { collection, query, where, getDocs, doc, updateDoc, arrayUnion, increment } from "firebase/firestore"
 
-/**
- * Handles webhook events from PaymentPoint
- * Triggered whenever a payment is made to a virtual account
- */
 export async function POST(request: Request) {
   try {
-    // Try to parse JSON
-    const data = await request.json()
+    let data: any
+
+    // 🧩 Try to parse JSON safely
+    try {
+      data = await request.json()
+    } catch {
+      const text = await request.text()
+      if (text) {
+        try {
+          data = JSON.parse(text)
+        } catch {
+          console.warn("⚠️ Non-JSON body received, using raw text")
+          data = { raw: text }
+        }
+      } else {
+        console.warn("⚠️ Empty webhook body received")
+        data = {}
+      }
+    }
+
     console.log("✅ PaymentPoint Webhook Received:", data)
 
-    // Extract fields from PaymentPoint webhook payload
+    // Extract key fields
     const {
-      account_number,       // virtual account number from PaymentPoint
+      account_number,
       amount_paid,
       transaction_id,
       transaction_status,
@@ -178,16 +192,15 @@ export async function POST(request: Request) {
       payment_date,
     } = data
 
-    // Validate required fields
+    // Validate
     if (!account_number) {
-      console.warn("⚠️ Missing account_number in webhook data:", data)
       return NextResponse.json(
-        { status: "ignored", reason: "No account_number found in payload" },
+        { status: "ignored", reason: "No account_number in payload" },
         { status: 200 }
       )
     }
 
-    // 🔍 Find user document with matching virtualAccount.accountNumber
+    // 🔍 Find the user by virtual account number
     const usersRef = collection(db, "users")
     const q = query(usersRef, where("virtualAccount.accountNumber", "==", account_number))
     const snapshot = await getDocs(q)
@@ -203,7 +216,7 @@ export async function POST(request: Request) {
     const userDoc = snapshot.docs[0]
     const userRef = doc(db, "users", userDoc.id)
 
-    // 💰 Update user document — add new transaction and update balance
+    // 💰 Update user's Firestore record
     await updateDoc(userRef, {
       transactions: arrayUnion({
         id: transaction_id || `txn_${Date.now()}`,
@@ -212,25 +225,25 @@ export async function POST(request: Request) {
         status: transaction_status || "unknown",
         date: payment_date || new Date().toISOString(),
       }),
-      balance: increment(amount_paid / 100 || 0), // divide by 100 if amount is in kobo
-      "virtualAccount.lastPayment": amount_paid,
+      balance: increment((amount_paid ?? 0) / 100),
+      "virtualAccount.lastPayment": amount_paid ?? 0,
       "virtualAccount.updatedAt": new Date().toISOString(),
     })
 
-    console.log(`💰 User with account ${account_number} updated successfully.`)
+    console.log(`💰 Updated user for account: ${account_number}`)
     return NextResponse.json({ status: "success", message: "Webhook processed successfully" })
   } catch (error: any) {
     console.error("🔥 Webhook error:", error)
-    return NextResponse.json({ status: "error", message: error.message }, { status: 500 })
+    return NextResponse.json(
+      { status: "error", message: error.message },
+      { status: 500 }
+    )
   }
 }
 
-/**
- * Optional: Allow simple GET check to verify webhook is live
- */
 export async function GET() {
   return NextResponse.json({
     status: "ok",
-    message: "PaymentPoint webhook route is live and ready 🚀",
+    message: "Webhook route is live and ready 🚀",
   })
 }
