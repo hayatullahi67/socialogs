@@ -2,33 +2,35 @@ import { auth, db } from './firebase'
 import { 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  updateProfile
 } from 'firebase/auth'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 
-export async function signUpWithFirebase(email: string, password: string, username: string) {
+export async function signUpWithFirebase(
+  email: string,
+  password: string,
+  username: string,
+  phone?: string
+): Promise<{ success: boolean; message?: string }> {
   try {
-    // Create auth user
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-    
-    // Create user profile in Firestore
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
+    const user = userCredential.user
+
+    // Update display name in Firebase Auth
+    await updateProfile(user, { displayName: username })
+
+    // Save user profile in Firestore (users collection)
+    await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
       username,
       email,
-      walletBalance: 0,
-      purchasedAccounts: 0,
-      createdAt: new Date()
+      phone: phone || null,
+      createdAt: serverTimestamp(),
     })
 
-    return {
-      success: true,
-      message: 'Account created successfully!',
-      user: userCredential.user
-    }
+    return { success: true }
   } catch (error: any) {
-    return {
-      success: false,
-      message: error.message
-    }
+    return { success: false, message: error?.message || "Registration failed" }
   }
 }
 

@@ -1,89 +1,121 @@
 "use client"
 
-import { Sidebar } from "@/components/dashboard/sidebar"
-import { Header } from "@/components/header"
-import { useState } from "react"
+import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
+import { useState, useEffect } from "react"
+import { auth, db } from "@/lib/firebase"
+import { doc, getDoc } from "firebase/firestore"
+import { Copy, CheckCircle2 } from "lucide-react"
 
 export default function AddFundsPage() {
-  const [amount, setAmount] = useState("")
+  const [virtualAccount, setVirtualAccount] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    async function fetchVirtualAccount() {
+      try {
+        const user = auth.currentUser
+        if (!user) {
+          console.log("No user logged in")
+          setLoading(false)
+          return
+        }
+
+        const userDoc = await getDoc(doc(db, "users", user.uid))
+        if (userDoc.exists() && userDoc.data()?.virtualAccount) {
+          setVirtualAccount(userDoc.data()?.virtualAccount)
+          console.log("Fetched virtual account:", userDoc.data()?.virtualAccount)
+        } else {
+          console.log("No virtual account found for user")
+        }
+      } catch (error) {
+        console.error("Error fetching virtual account:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchVirtualAccount()
+  }, [])
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error("Failed to copy:", err)
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex">
-        <aside className="hidden lg:block w-72">
-          <Sidebar />
-        </aside>
+    <DashboardLayout>
+      <main className="p-6 lg:p-8 bg-gray-50">
+        <div className="max-w-3xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Add Funds</h1>
+            <p className="text-sm text-gray-600 mt-1">Transfer to the account below to fund your wallet</p>
+          </div>
 
-        <main className="flex-1 p-4 md:p-6 lg:pl-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="mb-6">
-              <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Add Funds</h1>
-              <p className="text-sm text-gray-600 mt-1">Top up your wallet to buy accounts faster.</p>
+          {loading ? (
+            <div className="bg-white rounded-xl p-6 shadow-sm text-center">
+              Loading account details...
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 bg-white rounded-xl p-6 shadow-sm">
-                <label className="block text-sm text-gray-600">Amount</label>
-                <div className="mt-2 flex gap-2">
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Enter amount (₦)"
-                  />
-                  <button className="bg-primary text-white px-4 rounded-lg font-medium">Top up</button>
-                </div>
-
-                <div className="mt-6">
-                  <h3 className="text-sm text-gray-500 mb-2">Choose a payment method</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="border border-gray-200 rounded-lg p-3 flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Bank Transfer</div>
-                        <div className="text-xs text-gray-500">Transfer to our account manually</div>
-                      </div>
-                      <div>
-                        <button className="text-sm text-primary font-medium">Select</button>
-                      </div>
-                    </div>
-
-                    <div className="border border-gray-200 rounded-lg p-3 flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Paystack / Card</div>
-                        <div className="text-xs text-gray-500">Instant card payments</div>
-                      </div>
-                      <div>
-                        <button className="text-sm text-primary font-medium">Select</button>
-                      </div>
+          ) : virtualAccount ? (
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Bank Name</span>
+                    <span className="font-medium">{virtualAccount.bankName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Account Number</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{virtualAccount.accountNumber}</span>
+                      <button
+                        onClick={() => handleCopy(virtualAccount.accountNumber)}
+                        className="p-1 hover:bg-gray-100 rounded-md transition-colors"
+                      >
+                        {copied ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-gray-400" />
+                        )}
+                      </button>
                     </div>
                   </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Account Name</span>
+                    <span className="font-medium">{virtualAccount.accountName}</span>
+                  </div>
                 </div>
-
-                <p className="text-xs text-gray-500 mt-4">This page is UI-only. Integration with payment providers should be implemented on the server side.</p>
               </div>
 
-              <aside className="bg-white rounded-xl p-4 shadow-sm">
-                <h4 className="font-medium text-gray-900">Wallet Balance</h4>
-                <div className="mt-3 text-2xl font-semibold">₦4,750</div>
-                <div className="mt-4 text-sm text-gray-500">Suggested top-ups</div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {[1000, 2500, 5000, 10000].map((val) => (
-                    <button
-                      key={val}
-                      onClick={() => setAmount(String(val))}
-                      className="px-3 py-1 rounded-lg border border-gray-200 text-sm"
-                    >
-                      ₦{val.toLocaleString()}
-                    </button>
-                  ))}
-                </div>
-              </aside>
+              {/* Instructions */}
+              <div className="mt-6">
+                <h3 className="font-medium text-gray-900 mb-3">How to fund your wallet:</h3>
+                <ol className="space-y-2 text-sm text-gray-600">
+                  <li>1. Copy the account number above</li>
+                  <li>2. Transfer the amount you want to fund from your bank app</li>
+                  <li>3. Your wallet will be credited automatically within 5 minutes</li>
+                  <li>4. If not credited after 5 minutes, please contact support</li>
+                </ol>
+              </div>
+
+              {/* Important Notice */}
+              <div className="mt-6 bg-blue-50 text-blue-800 p-4 rounded-lg text-sm">
+                <strong>Important:</strong> Make sure the account name matches exactly as shown above. 
+                Transfers with incorrect names may be delayed or rejected.
+              </div>
             </div>
-          </div>
-        </main>
-      </div>
-    </div>
+          ) : (
+            <div className="bg-white rounded-xl p-6 shadow-sm text-center text-gray-500">
+              No virtual account found. Please contact support if this issue persists.
+            </div>
+          )}
+        </div>
+      </main>
+    </DashboardLayout>
   )
 }

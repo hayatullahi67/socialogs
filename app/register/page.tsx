@@ -1,35 +1,38 @@
 "use client"
 
 import Link from "next/link"
-import { User, Mail, Lock, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react"
+import { User, Mail, Lock, Eye, EyeOff, CheckCircle, XCircle, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Modal } from "@/components/ui/modal"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { signUpWithFirebase } from "@/lib/firebase-auth"
+import { auth, db } from "@/lib/firebase"
+import { doc, updateDoc } from "firebase/firestore"
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: ''
+    username: "",
+    email: "",
+    password: "",
+    phone: "",
   })
   const [isLoading, setIsLoading] = useState(false)
   const [modal, setModal] = useState({
     isOpen: false,
-    type: 'success' as 'success' | 'error',
-    title: '',
-    message: ''
+    type: "success" as "success" | "error",
+    title: "",
+    message: "",
   })
   const router = useRouter()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }))
   }
 
@@ -37,12 +40,25 @@ export default function RegisterPage() {
     e.preventDefault()
 
     // Basic validation
-    if (!formData.username || !formData.email || !formData.password) {
+    if (!formData.username || !formData.email || !formData.password || !formData.phone) {
       setModal({
         isOpen: true,
-        type: 'error',
-        title: 'Validation Error',
-        message: 'Please fill in all fields'
+        type: "error",
+        title: "Validation Error",
+        message: "Please fill in all fields",
+      })
+      return
+    }
+
+    // Basic phone validation (digits, optional +, length 7-15)
+    const phoneNormalized = formData.phone.trim()
+    const phoneRegex = /^\+?\d{7,15}$/
+    if (!phoneRegex.test(phoneNormalized)) {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Validation Error",
+        message: "Please enter a valid phone number (digits only, optional +, 7-15 chars).",
       })
       return
     }
@@ -50,9 +66,9 @@ export default function RegisterPage() {
     if (formData.password.length < 6) {
       setModal({
         isOpen: true,
-        type: 'error',
-        title: 'Validation Error',
-        message: 'Password must be at least 6 characters long'
+        type: "error",
+        title: "Validation Error",
+        message: "Password must be at least 6 characters long",
       })
       return
     }
@@ -63,38 +79,120 @@ export default function RegisterPage() {
       const result = await signUpWithFirebase(
         formData.email,
         formData.password,
-        formData.username
+        formData.username,
+        phoneNormalized
       )
 
+      // ALWAYS log the signup result so you can verify it's returning success
+      console.log('signUpWithFirebase result:', result)
+
       if (result.success) {
+        console.log('Firebase signup succeeded — about to call virtual account API', {
+          email: formData.email,
+          username: formData.username,
+          phone: phoneNormalized,
+          navigatorOnline: typeof navigator !== "undefined" ? navigator.onLine : "unknown",
+        })
+
+        // API credentials (as provided)
+        const apiSecret = 'b6c78bbe842c103548b6e93360def7a9fee8d89b847e7579ac648206898149e699abec0fc05518faefbc86ce43269dcb90a7e9665895993cfa930fe0'
+        const apiKey = '51f95b6c653949ce47d04a3455a6dd1245ca54a6' // used as api-key header
+        const businessId = '731a954915ce7768e190acd29eb08e8a853c3ab8'
+
+        const headers = {
+          'Authorization': `Bearer ${apiSecret}`,
+          'Content-Type': 'application/json',
+          'api-key': apiKey,
+        }
+
+        const body = {
+          email: formData.email,
+          name: formData.username,
+          phoneNumber: phoneNormalized,
+          bankCode: ['20946', '20897'],
+          businessId,
+        }
+
+        // Log request details (do NOT expose secrets in production logs)
+        console.log('Calling virtual account API ->', {
+          url: 'https://api.paymentpoint.co/api/v1/createVirtualAccount',
+          headers: { ...headers, Authorization: 'Bearer [REDACTED]' }, // redact secret in logs
+          body,
+        })
+
+        try {
+          const proxyResp = await fetch("/api/create-virtual-account", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+
+          const proxyJson = await proxyResp.json()
+          console.log("Proxy response:", proxyResp.status, proxyJson)
+
+          if (proxyResp.ok && proxyJson.status === 'success') {
+            console.log("Virtual account created via server proxy:", proxyJson)
+            
+            // Get the bank account details from response
+            const bank = proxyJson.bankAccounts?.[0]
+            const uid = auth.currentUser?.uid
+
+            if (uid && bank) {
+              try {
+                // Update the user's document with virtual account details
+                await updateDoc(doc(db, "users", uid), {
+                  virtualAccount: {
+                    accountName: bank.accountName,
+                    accountNumber: bank.accountNumber,
+                    bankName: bank.bankName,
+                    bankCode: bank.bankCode,
+                    reservedAccountId: bank.Reserved_Account_Id,
+                    updatedAt: new Date().toISOString()
+                  }
+                })
+                console.log("✅ Virtual account stored successfully for user:", uid)
+              } catch (dbError) {
+                console.error("Failed to store virtual account:", dbError)
+              }
+            } else {
+              console.warn("Missing uid or bank details for storage", { uid, bankInfo: bank })
+            }
+          } else {
+            console.error("Server proxy returned error:", proxyJson)
+          }
+        } catch (err) {
+          console.error("Error calling server proxy:", err)
+        }
+
         setModal({
           isOpen: true,
-          type: 'success',
-          title: 'Registration Successful!',
-          message: 'Your account has been created successfully. Redirecting to login...'
+          type: "success",
+          title: "Registration Successful!",
+          message: "Your account has been created successfully. Redirecting to login...",
         })
-        
+
         // Reset form
-        setFormData({ username: '', email: '', password: '' })
-        
+        setFormData({ username: "", email: "", password: "", phone: "" })
+
         // Redirect to login after 2 seconds
         setTimeout(() => {
-          router.push('/login')
+          router.push("/login")
         }, 2000)
       } else {
         setModal({
           isOpen: true,
-          type: 'error',
-          title: 'Registration Failed',
-          message: result.message || 'Something went wrong. Please try again.'
+          type: "error",
+          title: "Registration Failed",
+          message: result.message || "Something went wrong. Please try again.",
         })
       }
     } catch (error: any) {
+      console.error('Unexpected error during registration flow:', error)
       setModal({
         isOpen: true,
-        type: 'error',
-        title: 'Error',
-        message: error.message || 'An unexpected error occurred'
+        type: "error",
+        title: "Error",
+        message: error?.message || "An unexpected error occurred",
       })
     } finally {
       setIsLoading(false)
@@ -102,7 +200,7 @@ export default function RegisterPage() {
   }
 
   const closeModal = () => {
-    setModal(prev => ({ ...prev, isOpen: false }))
+    setModal((prev) => ({ ...prev, isOpen: false }))
   }
 
   return (
@@ -141,6 +239,22 @@ export default function RegisterPage() {
                 name="email"
                 placeholder="Email"
                 value={formData.email}
+                onChange={handleInputChange}
+                disabled={isLoading}
+                className="pl-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all disabled:opacity-50"
+              />
+            </div>
+
+            {/* Phone input */}
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary transition-transform group-focus-within:scale-110">
+                <Phone className="w-5 h-5" />
+              </div>
+              <Input
+                type="tel"
+                name="phone"
+                placeholder="Phone (e.g. +2348012345678)"
+                value={formData.phone}
                 onChange={handleInputChange}
                 disabled={isLoading}
                 className="pl-12 h-14 bg-gray-50 border border-gray-200 focus:border-primary focus:bg-white rounded-xl text-base transition-all disabled:opacity-50"
@@ -240,14 +354,10 @@ export default function RegisterPage() {
       </div>
 
       {/* Success/Error Modal */}
-      <Modal
-        isOpen={modal.isOpen}
-        onClose={closeModal}
-        title={modal.title}
-      >
+      <Modal isOpen={modal.isOpen} onClose={closeModal} title={modal.title}>
         <div className="text-center">
           <div className="mb-4">
-            {modal.type === 'success' ? (
+            {modal.type === "success" ? (
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
             ) : (
               <XCircle className="w-16 h-16 text-red-500 mx-auto" />
@@ -255,14 +365,10 @@ export default function RegisterPage() {
           </div>
           <p className="text-gray-600 mb-6">{modal.message}</p>
           <div className="flex gap-3">
-            <Button
-              onClick={closeModal}
-              className="flex-1"
-              variant={modal.type === 'success' ? 'default' : 'outline'}
-            >
-              {modal.type === 'success' ? 'Continue' : 'Try Again'}
+            <Button onClick={closeModal} className="flex-1" variant={modal.type === "success" ? "default" : "outline"}>
+              {modal.type === "success" ? "Continue" : "Try Again"}
             </Button>
-            {modal.type === 'success' && (
+            {modal.type === "success" && (
               <Link href="/login" className="flex-1">
                 <Button className="w-full" variant="outline">
                   Go to Login
