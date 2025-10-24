@@ -153,36 +153,25 @@
 // }
 
 
-
 import { NextResponse } from "next/server"
 import { db } from "@/lib/firebase"
 import { collection, query, where, getDocs, doc, updateDoc, arrayUnion, increment } from "firebase/firestore"
 
 export async function POST(request: Request) {
   try {
-    let data: any
+    // ✅ Read the body ONCE
+    const rawBody = await request.text()
+    let data: any = {}
 
-    // 🧩 Try to parse JSON safely
     try {
-      data = await request.json()
+      data = JSON.parse(rawBody)
     } catch {
-      const text = await request.text()
-      if (text) {
-        try {
-          data = JSON.parse(text)
-        } catch {
-          console.warn("⚠️ Non-JSON body received, using raw text")
-          data = { raw: text }
-        }
-      } else {
-        console.warn("⚠️ Empty webhook body received")
-        data = {}
-      }
+      console.warn("⚠️ Webhook body is not valid JSON, using raw text.")
+      data = { raw: rawBody }
     }
 
     console.log("✅ PaymentPoint Webhook Received:", data)
 
-    // Extract key fields
     const {
       account_number,
       amount_paid,
@@ -192,15 +181,15 @@ export async function POST(request: Request) {
       payment_date,
     } = data
 
-    // Validate
     if (!account_number) {
+      console.warn("⚠️ Missing account_number in webhook payload")
       return NextResponse.json(
-        { status: "ignored", reason: "No account_number in payload" },
+        { status: "ignored", reason: "No account_number found" },
         { status: 200 }
       )
     }
 
-    // 🔍 Find the user by virtual account number
+    // 🔍 Find user by virtual account number
     const usersRef = collection(db, "users")
     const q = query(usersRef, where("virtualAccount.accountNumber", "==", account_number))
     const snapshot = await getDocs(q)
@@ -216,7 +205,7 @@ export async function POST(request: Request) {
     const userDoc = snapshot.docs[0]
     const userRef = doc(db, "users", userDoc.id)
 
-    // 💰 Update user's Firestore record
+    // 💰 Update the user's Firestore document
     await updateDoc(userRef, {
       transactions: arrayUnion({
         id: transaction_id || `txn_${Date.now()}`,
@@ -230,8 +219,12 @@ export async function POST(request: Request) {
       "virtualAccount.updatedAt": new Date().toISOString(),
     })
 
-    console.log(`💰 Updated user for account: ${account_number}`)
-    return NextResponse.json({ status: "success", message: "Webhook processed successfully" })
+    console.log(`💰 User with account ${account_number} updated successfully.`)
+
+    return NextResponse.json({
+      status: "success",
+      message: "Webhook processed successfully 🚀",
+    })
   } catch (error: any) {
     console.error("🔥 Webhook error:", error)
     return NextResponse.json(
