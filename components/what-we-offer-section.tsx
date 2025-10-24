@@ -21,7 +21,7 @@ export function WhatWeOfferSection() {
             </h2>
             <p className="mt-4 text-pretty text-base text-muted-foreground sm:text-lg lg:mt-0 lg:max-w-xl">
               Because it's Rediprofiles that provides you with everything you need to have a wonderful social media
-              trading experience
+              trading experiences
             </p>
           </div>
 
