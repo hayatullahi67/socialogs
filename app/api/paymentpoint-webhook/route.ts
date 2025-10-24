@@ -68,86 +68,169 @@
 
 
 
-import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, updateDoc, arrayUnion, increment } from "firebase/firestore";
+// import { NextResponse } from "next/server";
+// import { db } from "@/lib/firebase";
+// import { collection, query, where, getDocs, updateDoc, arrayUnion, increment } from "firebase/firestore";
+
+// /**
+//  * Webhook handler for PaymentPoint notifications
+//  * Finds the user by virtualAccount.accountNumber
+//  */
+// export async function POST(request: Request) {
+//   try {
+//     const data = await request.json();
+//     console.log("✅ PaymentPoint Webhook Received:", data);
+
+//     // Extract key fields — adjust names to match actual PaymentPoint payload
+//     const {
+//       account_number,
+//       amount_paid,
+//       transaction_id,
+//       transaction_status,
+//       payment_reference,
+//       payment_date,
+//     } = data;
+
+//     if (!account_number) {
+//       console.warn("⚠️ Missing account_number in webhook data:", data);
+//       return NextResponse.json(
+//         { status: "ignored", reason: "No account_number found" },
+//         { status: 200 }
+//       );
+//     }
+
+//     // 🔍 Query the users collection for the document with this virtualAccount.accountNumber
+//     const usersRef = collection(db, "users");
+//     const q = query(usersRef, where("virtualAccount.accountNumber", "==", account_number));
+//     const querySnapshot = await getDocs(q);
+
+//     if (querySnapshot.empty) {
+//       console.warn("⚠️ No user found for account number:", account_number);
+//       return NextResponse.json(
+//         { status: "error", message: `User not found for account number: ${account_number}` },
+//         { status: 404 }
+//       );
+//     }
+
+//     const userDoc = querySnapshot.docs[0].ref;
+
+//     // ✅ Update user's document with the transaction
+//     await updateDoc(userDoc, {
+//       transactions: arrayUnion({
+//         id: transaction_id,
+//         reference: payment_reference,
+//         amount: amount_paid,
+//         status: transaction_status,
+//         date: payment_date || new Date().toISOString(),
+//       }),
+//       balance: increment(amount_paid / 100), // divide by 100 if amount is in kobo
+//       updatedAt: new Date().toISOString(),
+//     });
+
+//     console.log(`💰 User with account ${account_number} updated successfully.`);
+
+//     return NextResponse.json({
+//       status: "success",
+//       message: "Webhook processed successfully",
+//     });
+//   } catch (error: any) {
+//     console.error("🔥 Webhook error:", error);
+//     return NextResponse.json(
+//       { status: "error", message: error.message },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// /**
+//  * GET request — used to confirm webhook route is live
+//  */
+// export async function GET() {
+//   return NextResponse.json({
+//     status: "ok",
+//     message: "PaymentPoint Webhook route is live and ready 🚀",
+//   });
+// }
+
+
+
+import { NextResponse } from "next/server"
+import { db } from "@/lib/firebase"
+import { collection, query, where, getDocs, doc, updateDoc, arrayUnion, increment } from "firebase/firestore"
 
 /**
- * Webhook handler for PaymentPoint notifications
- * Finds the user by virtualAccount.accountNumber
+ * Handles webhook events from PaymentPoint
+ * Triggered whenever a payment is made to a virtual account
  */
 export async function POST(request: Request) {
   try {
-    const data = await request.json();
-    console.log("✅ PaymentPoint Webhook Received:", data);
+    // Try to parse JSON
+    const data = await request.json()
+    console.log("✅ PaymentPoint Webhook Received:", data)
 
-    // Extract key fields — adjust names to match actual PaymentPoint payload
+    // Extract fields from PaymentPoint webhook payload
     const {
-      account_number,
+      account_number,       // virtual account number from PaymentPoint
       amount_paid,
       transaction_id,
       transaction_status,
       payment_reference,
       payment_date,
-    } = data;
+    } = data
 
+    // Validate required fields
     if (!account_number) {
-      console.warn("⚠️ Missing account_number in webhook data:", data);
+      console.warn("⚠️ Missing account_number in webhook data:", data)
       return NextResponse.json(
-        { status: "ignored", reason: "No account_number found" },
+        { status: "ignored", reason: "No account_number found in payload" },
         { status: 200 }
-      );
+      )
     }
 
-    // 🔍 Query the users collection for the document with this virtualAccount.accountNumber
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("virtualAccount.accountNumber", "==", account_number));
-    const querySnapshot = await getDocs(q);
+    // 🔍 Find user document with matching virtualAccount.accountNumber
+    const usersRef = collection(db, "users")
+    const q = query(usersRef, where("virtualAccount.accountNumber", "==", account_number))
+    const snapshot = await getDocs(q)
 
-    if (querySnapshot.empty) {
-      console.warn("⚠️ No user found for account number:", account_number);
+    if (snapshot.empty) {
+      console.warn(`⚠️ No user found for account number: ${account_number}`)
       return NextResponse.json(
-        { status: "error", message: `User not found for account number: ${account_number}` },
+        { status: "error", message: `User not found for account number ${account_number}` },
         { status: 404 }
-      );
+      )
     }
 
-    const userDoc = querySnapshot.docs[0].ref;
+    const userDoc = snapshot.docs[0]
+    const userRef = doc(db, "users", userDoc.id)
 
-    // ✅ Update user's document with the transaction
-    await updateDoc(userDoc, {
+    // 💰 Update user document — add new transaction and update balance
+    await updateDoc(userRef, {
       transactions: arrayUnion({
-        id: transaction_id,
-        reference: payment_reference,
-        amount: amount_paid,
-        status: transaction_status,
+        id: transaction_id || `txn_${Date.now()}`,
+        reference: payment_reference || "no_ref",
+        amount: amount_paid || 0,
+        status: transaction_status || "unknown",
         date: payment_date || new Date().toISOString(),
       }),
-      balance: increment(amount_paid / 100), // divide by 100 if amount is in kobo
-      updatedAt: new Date().toISOString(),
-    });
+      balance: increment(amount_paid / 100 || 0), // divide by 100 if amount is in kobo
+      "virtualAccount.lastPayment": amount_paid,
+      "virtualAccount.updatedAt": new Date().toISOString(),
+    })
 
-    console.log(`💰 User with account ${account_number} updated successfully.`);
-
-    return NextResponse.json({
-      status: "success",
-      message: "Webhook processed successfully",
-    });
+    console.log(`💰 User with account ${account_number} updated successfully.`)
+    return NextResponse.json({ status: "success", message: "Webhook processed successfully" })
   } catch (error: any) {
-    console.error("🔥 Webhook error:", error);
-    return NextResponse.json(
-      { status: "error", message: error.message },
-      { status: 500 }
-    );
+    console.error("🔥 Webhook error:", error)
+    return NextResponse.json({ status: "error", message: error.message }, { status: 500 })
   }
 }
 
 /**
- * GET request — used to confirm webhook route is live
+ * Optional: Allow simple GET check to verify webhook is live
  */
 export async function GET() {
   return NextResponse.json({
     status: "ok",
-    message: "PaymentPoint Webhook route is live and ready 🚀",
-  });
+    message: "PaymentPoint webhook route is live and ready 🚀",
+  })
 }
