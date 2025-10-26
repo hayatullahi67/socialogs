@@ -412,19 +412,54 @@ import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
-    // Read the raw body
-    const clonedRequest = request.clone();
-    const rawBody = await request.text();
-    
-    console.log("📦 PaymentPoint Webhook Received");
+    console.log("=".repeat(60));
+    console.log("🔔 WEBHOOK ENDPOINT HIT");
     console.log("Timestamp:", new Date().toISOString());
-    console.log("Body length:", rawBody.length);
+    console.log("URL:", request.url);
+    console.log("Method:", request.method);
+    
+    // Log ALL headers
+    console.log("📋 Headers:");
+    request.headers.forEach((value, key) => {
+      console.log(`  ${key}: ${value}`);
+    });
+    
+    // Check content-type
+    const contentType = request.headers.get("content-type");
+    console.log("Content-Type:", contentType);
+    
+    // Check content-length
+    const contentLength = request.headers.get("content-length");
+    console.log("Content-Length:", contentLength);
+    
+    // Try multiple ways to read the body
+    const clonedRequest = request.clone();
+    let rawBody = "";
+    
+    try {
+      rawBody = await request.text();
+      console.log("📦 Raw body length:", rawBody.length);
+      console.log("📦 Raw body preview:", rawBody.substring(0, 500));
+    } catch (readError) {
+      console.error("❌ Error reading body:", readError);
+    }
 
     // Check for empty body
     if (!rawBody || rawBody.length === 0) {
       console.error("❌ Empty body received");
+      console.log("This means PaymentPoint either:");
+      console.log("  1. Isn't sending data");
+      console.log("  2. Sending data in a different format");
+      console.log("  3. The webhook URL is incorrect");
+      
       return NextResponse.json(
-        { status: "error", message: "Empty request body" },
+        { 
+          status: "error", 
+          message: "Empty request body",
+          contentType,
+          contentLength,
+          headers: Object.fromEntries(request.headers)
+        },
         { status: 400 }
       );
     }
@@ -434,8 +469,10 @@ export async function POST(request: Request) {
     try {
       data = await clonedRequest.json();
       console.log("✅ JSON parsed successfully");
+      console.log("Data keys:", Object.keys(data));
     } catch (err) {
       console.error("⚠️ JSON parse error:", err);
+      console.log("Raw body was:", rawBody);
       return NextResponse.json(
         { status: "error", message: "Invalid JSON" },
         { status: 400 }
@@ -514,37 +551,14 @@ export async function POST(request: Request) {
     if (transaction_status === "success" && notification_status === "payment_successful") {
       console.log("✅ Processing successful payment...");
       
-      // 🔥 TODO: Add your business logic here
-      // Examples:
-      
-      // 1. Update user wallet/balance
-      // await updateUserBalance(customer.customer_id, amount_paid);
-      
-      // 2. Save transaction to database
-      // await saveTransaction({
-      //   transactionId: transaction_id,
-      //   customerId: customer.customer_id,
-      //   amount: amount_paid,
-      //   status: 'completed',
-      //   timestamp: new Date(timestamp)
-      // });
-      
-      // 3. Send confirmation email
-      // await sendEmail({
-      //   to: customer.email,
-      //   subject: 'Payment Successful',
-      //   amount: amount_paid,
-      //   transactionId: transaction_id
-      // });
-      
-      // 4. Trigger other services
-      // await notifyOtherServices(transaction_id);
+      // TODO: Add your business logic here
       
       console.log("✅ Payment processed successfully!");
     } else {
       console.warn("⚠️ Non-successful payment status:", transaction_status);
-      // Handle failed/pending payments if needed
     }
+
+    console.log("=".repeat(60));
 
     // Always return 200 to acknowledge webhook receipt
     return NextResponse.json(
@@ -560,10 +574,9 @@ export async function POST(request: Request) {
     console.error("🔥 Webhook error:", err);
     console.error("Error stack:", err.stack);
     
-    // Still return 200 so PaymentPoint doesn't retry
     return NextResponse.json(
       { status: "error", message: err.message },
-      { status: 200 } // Return 200 to prevent retries
+      { status: 200 }
     );
   }
 }
@@ -576,6 +589,7 @@ export async function GET() {
     status: "ok",
     message: "PaymentPoint webhook is active 🚀",
     configured: hasSecret,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    url: "POST to this endpoint to receive webhooks"
   });
 }
