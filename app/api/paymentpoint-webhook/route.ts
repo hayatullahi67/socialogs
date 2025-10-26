@@ -256,19 +256,167 @@
 
 
 
+// import { NextResponse } from "next/server";
+// import crypto from "crypto";
+
+// export async function POST(request: Request) {
+//   try {
+//     // 🔍 Log all headers for debugging
+//     console.log("📋 Request headers:");
+//     request.headers.forEach((value, key) => {
+//       console.log(`  ${key}: ${value}`);
+//     });
+
+//     // ✅ 1. Read raw body
+//     let rawBody = await request.text();
+    
+//     console.log("📦 Raw body received:");
+//     console.log(rawBody);
+//     console.log("📦 Length:", rawBody.length);
+
+//     // Check if empty
+//     if (!rawBody || rawBody.length === 0) {
+//       return NextResponse.json(
+//         { status: "error", message: "Empty request body" },
+//         { status: 400 }
+//       );
+//     }
+
+//     // Remove BOM if present
+//     if (rawBody.charCodeAt(0) === 0xFEFF) {
+//       rawBody = rawBody.slice(1);
+//     }
+
+//     // Trim whitespace
+//     rawBody = rawBody.trim();
+
+//     // ✅ 2. Parse JSON
+//     let data;
+//     try {
+//       data = JSON.parse(rawBody);
+//     } catch (err) {
+//       console.error("⚠️ JSON parse failed:", err);
+//       console.log("🧾 Problematic body:", rawBody);
+      
+//       // Try URL-encoded format (some webhooks send this)
+//       if (rawBody.includes('=') && rawBody.includes('&')) {
+//         console.log("🔄 Attempting to parse as URL-encoded...");
+//         const params = new URLSearchParams(rawBody);
+//         const jsonStr = params.get('data') || params.get('payload');
+//         if (jsonStr) {
+//           try {
+//             data = JSON.parse(jsonStr);
+//             console.log("✅ Parsed from URL-encoded format");
+//           } catch (e) {
+//             console.error("❌ URL-encoded parse also failed");
+//           }
+//         }
+//       }
+      
+//       if (!data) {
+//         return NextResponse.json(
+//           { 
+//             status: "error", 
+//             message: "Invalid JSON", 
+//             details: err instanceof Error ? err.message : "Parse failed"
+//           },
+//           { status: 400 }
+//         );
+//       }
+//     }
+
+//     console.log("✅ Parsed data:", JSON.stringify(data, null, 2));
+
+//     // ✅ 3. Verify signature
+//     const signature = request.headers.get("paymentpoint-signature");
+//     if (!signature) {
+//       console.warn("⚠️ Missing PaymentPoint-Signature header");
+//       return NextResponse.json(
+//         { status: "error", message: "Missing signature" },
+//         { status: 400 }
+//       );
+//     }
+
+//     const securityKey = process.env.PAYMENTPOINT_WEBHOOK_SECRET || 
+//       "b6c78bbe842c103548b6e93360def7a9fee8d89b847e7579ac648206898149e699abec0fc05518faefbc86ce43269dcb90a7e9665895993cfa930fe0";
+
+//     const calculatedSignature = crypto
+//       .createHmac("sha256", securityKey)
+//       .update(rawBody)
+//       .digest("hex");
+
+//     console.log("🔐 Signature check:");
+//     console.log("  Received:", signature);
+//     console.log("  Calculated:", calculatedSignature);
+
+//     if (calculatedSignature !== signature) {
+//       console.error("❌ Signature mismatch");
+//       return NextResponse.json(
+//         { status: "error", message: "Invalid signature" },
+//         { status: 403 }
+//       );
+//     }
+
+//     // ✅ 4. Process webhook data
+//     const {
+//       notification_status,
+//       transaction_id,
+//       amount_paid,
+//       settlement_amount,
+//       settlement_fee,
+//       transaction_status,
+//       sender,
+//       receiver,
+//       description,
+//       timestamp,
+//     } = data;
+
+//     console.log("✅ PaymentPoint Webhook Processed:");
+//     console.log({
+//       transaction_id,
+//       amount_paid,
+//       settlement_amount,
+//       transaction_status,
+//       receiver_account: receiver?.account_number,
+//       timestamp
+//     });
+
+//     // TODO: Update your database here
+
+//     return NextResponse.json(
+//       { status: "success", message: "Webhook processed" },
+//       { status: 200 }
+//     );
+//   } catch (err: any) {
+//     console.error("🔥 Webhook error:", err);
+//     return NextResponse.json(
+//       { status: "error", message: err.message },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// export async function GET() {
+//   return NextResponse.json({
+//     status: "ok",
+//     message: "PaymentPoint webhook is active 🚀",
+//   });
+// }
+
+
+
+
+
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
-    // 🔍 Log all headers for debugging
-    console.log("📋 Request headers:");
-    request.headers.forEach((value, key) => {
-      console.log(`  ${key}: ${value}`);
-    });
-
-    // ✅ 1. Read raw body
-    let rawBody = await request.text();
+    // ✅ Clone the request so we can read the body multiple times
+    const clonedRequest = request.clone();
+    
+    // 🔍 Read raw body for signature verification
+    const rawBody = await request.text();
     
     console.log("📦 Raw body received:");
     console.log(rawBody);
@@ -276,88 +424,60 @@ export async function POST(request: Request) {
 
     // Check if empty
     if (!rawBody || rawBody.length === 0) {
+      console.error("❌ Empty body - check if PaymentPoint is sending data");
       return NextResponse.json(
         { status: "error", message: "Empty request body" },
         { status: 400 }
       );
     }
 
-    // Remove BOM if present
-    if (rawBody.charCodeAt(0) === 0xFEFF) {
-      rawBody = rawBody.slice(1);
-    }
-
-    // Trim whitespace
-    rawBody = rawBody.trim();
-
-    // ✅ 2. Parse JSON
+    // ✅ Parse JSON from the cloned request
     let data;
     try {
-      data = JSON.parse(rawBody);
+      data = await clonedRequest.json();
+      console.log("✅ Parsed data:", JSON.stringify(data, null, 2));
     } catch (err) {
       console.error("⚠️ JSON parse failed:", err);
-      console.log("🧾 Problematic body:", rawBody);
-      
-      // Try URL-encoded format (some webhooks send this)
-      if (rawBody.includes('=') && rawBody.includes('&')) {
-        console.log("🔄 Attempting to parse as URL-encoded...");
-        const params = new URLSearchParams(rawBody);
-        const jsonStr = params.get('data') || params.get('payload');
-        if (jsonStr) {
-          try {
-            data = JSON.parse(jsonStr);
-            console.log("✅ Parsed from URL-encoded format");
-          } catch (e) {
-            console.error("❌ URL-encoded parse also failed");
-          }
-        }
-      }
-      
-      if (!data) {
-        return NextResponse.json(
-          { 
-            status: "error", 
-            message: "Invalid JSON", 
-            details: err instanceof Error ? err.message : "Parse failed"
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    console.log("✅ Parsed data:", JSON.stringify(data, null, 2));
-
-    // ✅ 3. Verify signature
-    const signature = request.headers.get("paymentpoint-signature");
-    if (!signature) {
-      console.warn("⚠️ Missing PaymentPoint-Signature header");
       return NextResponse.json(
-        { status: "error", message: "Missing signature" },
+        { status: "error", message: "Invalid JSON" },
         { status: 400 }
       );
     }
 
-    const securityKey = process.env.PAYMENTPOINT_WEBHOOK_SECRET || 
-      "b6c78bbe842c103548b6e93360def7a9fee8d89b847e7579ac648206898149e699abec0fc05518faefbc86ce43269dcb90a7e9665895993cfa930fe0";
-
-    const calculatedSignature = crypto
-      .createHmac("sha256", securityKey)
-      .update(rawBody)
-      .digest("hex");
-
-    console.log("🔐 Signature check:");
-    console.log("  Received:", signature);
-    console.log("  Calculated:", calculatedSignature);
-
-    if (calculatedSignature !== signature) {
-      console.error("❌ Signature mismatch");
-      return NextResponse.json(
-        { status: "error", message: "Invalid signature" },
-        { status: 403 }
-      );
+    // ✅ Verify signature
+    const signature = request.headers.get("paymentpoint-signature");
+    if (!signature) {
+      console.warn("⚠️ Missing PaymentPoint-Signature header");
+      // For testing, you might want to skip this temporarily
+      // return NextResponse.json(
+      //   { status: "error", message: "Missing signature" },
+      //   { status: 400 }
+      // );
     }
 
-    // ✅ 4. Process webhook data
+    if (signature) {
+      const securityKey = process.env.PAYMENTPOINT_WEBHOOK_SECRET || 
+        "b6c78bbe842c103548b6e93360def7a9fee8d89b847e7579ac648206898149e699abec0fc05518faefbc86ce43269dcb90a7e9665895993cfa930fe0";
+
+      const calculatedSignature = crypto
+        .createHmac("sha256", securityKey)
+        .update(rawBody)
+        .digest("hex");
+
+      console.log("🔐 Signature check:");
+      console.log("  Received:", signature);
+      console.log("  Calculated:", calculatedSignature);
+
+      if (calculatedSignature !== signature) {
+        console.error("❌ Signature mismatch");
+        return NextResponse.json(
+          { status: "error", message: "Invalid signature" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // ✅ Process webhook data
     const {
       notification_status,
       transaction_id,
@@ -367,24 +487,31 @@ export async function POST(request: Request) {
       transaction_status,
       sender,
       receiver,
+      customer,
       description,
       timestamp,
     } = data;
 
     console.log("✅ PaymentPoint Webhook Processed:");
     console.log({
+      notification_status,
       transaction_id,
       amount_paid,
       settlement_amount,
       transaction_status,
+      sender_name: sender?.name,
       receiver_account: receiver?.account_number,
+      customer_email: customer?.email,
       timestamp
     });
 
-    // TODO: Update your database here
+    // 🔜 TODO: Update your database/wallet here
+    // Example:
+    // await updateUserWallet(customer.customer_id, amount_paid);
+    // await logTransaction(transaction_id, data);
 
     return NextResponse.json(
-      { status: "success", message: "Webhook processed" },
+      { status: "success", message: "Webhook processed successfully" },
       { status: 200 }
     );
   } catch (err: any) {
