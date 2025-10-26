@@ -1,99 +1,55 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
-export const config = {
-  api: {
-    bodyParser: false, // ✅ Important: disable default body parsing
-  },
-};
+// Replace with your actual secret key from PaymentPoint
+const SECURITY_KEY = "xxx"; // 🔐 Use env variable in production
 
 export async function POST(request: Request) {
   try {
-    // ✅ 1. Read the raw body (required for signature verification)
+    // Get signature from headers
+    const signature = request.headers.get("paymentpoint-signature");
+    if (!signature) {
+      return NextResponse.json({ status: "error", message: "Missing signature" }, { status: 400 });
+    }
+
+    // Get the raw request body as text (important for hash verification)
     const rawBody = await request.text();
 
-    // ✅ 2. Parse the JSON safely
-    let data;
-    try {
-      data = JSON.parse(rawBody);
-    } catch {
-      console.warn("⚠️ Invalid JSON received from PaymentPoint");
-      return NextResponse.json(
-        { status: "error", message: "Invalid JSON" },
-        { status: 400 }
-      );
-    }
-
-    console.log("✅ Webhook Received from PaymentPoint:", data);
-
-    // ✅ 3. Verify PaymentPoint Signature
-    const signature = request.headers.get("paymentpoint-signature");
-    const secret =
-      process.env.PAYMENTPOINT_WEBHOOK_SECRET ||
-      "b6c78bbe842c103548b6e93360def7a9fee8d89b847e7579ac648206898149e699abec0fc05518faefbc86ce43269dcb90a7e9665895993cfa930fe0"; // Replace with your actual secret (in .env)
-
-    if (!signature) {
-      console.warn("⚠️ Missing PaymentPoint signature header");
-      return NextResponse.json(
-        { status: "error", message: "Missing signature" },
-        { status: 400 }
-      );
-    }
-
-    // Generate the expected signature
-    const expectedSignature = crypto
-      .createHmac("sha256", secret)
+    // Verify signature (PaymentPoint uses SHA-256 HMAC)
+    const calculatedSignature = crypto
+      .createHmac("sha256", SECURITY_KEY)
       .update(rawBody)
       .digest("hex");
 
-    if (expectedSignature !== signature) {
-      console.warn("❌ Invalid PaymentPoint signature");
-      return NextResponse.json(
-        { status: "error", message: "Invalid signature" },
-        { status: 403 }
-      );
+    if (calculatedSignature !== signature) {
+      return NextResponse.json({ status: "error", message: "Invalid signature" }, { status: 400 });
     }
 
-    // ✅ 4. Log and confirm notification receipt
-    console.log("✅ Verified Webhook Signature from PaymentPoint");
+    // Parse the body after verifying signature
+    const data = JSON.parse(rawBody);
 
-    // ✅ 5. (Optional) Extract payment data for logging/testing
+    // Extract fields from payload
     const {
-      notification_status,
       transaction_id,
       amount_paid,
+      settlement_amount,
       transaction_status,
-      sender,
-      receiver,
-      description,
-      timestamp,
+      customer,
     } = data;
 
-    console.log("💰 Payment Details:");
-    console.log("Transaction ID:", transaction_id);
-    console.log("Amount Paid:", amount_paid);
-    console.log("Receiver:", receiver);
-    console.log("Status:", transaction_status || notification_status);
-    console.log("Timestamp:", timestamp);
+    console.log("✅ Webhook received:");
+    console.log(`Transaction ID: ${transaction_id}`);
+    console.log(`Amount Paid: ${amount_paid}`);
+    console.log(`Settlement Amount: ${settlement_amount}`);
+    console.log(`Status: ${transaction_status}`);
+    console.log(`Customer: ${customer?.name || "Unknown"}`);
 
-    // ✅ 6. Send success response back to PaymentPoint
-    return NextResponse.json(
-      { status: "success", message: "Webhook received and verified" },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error("🔥 Webhook Error:", error);
-    return NextResponse.json(
-      { status: "error", message: error.message },
-      { status: 500 }
-    );
+    // TODO: You can store this data in Firestore or your DB here
+
+    // Respond success to acknowledge receipt
+    return NextResponse.json({ status: "success" }, { status: 200 });
+  } catch (error) {
+    console.error("❌ Webhook Error:", error);
+    return NextResponse.json({ status: "error", message: "Invalid JSON" }, { status: 400 });
   }
-}
-
-// ✅ GET route for testing if webhook is live
-export async function GET() {
-  return NextResponse.json({
-    status: "ok",
-    message: "PaymentPoint Webhook route active 🚀",
-  });
 }
