@@ -412,72 +412,78 @@ import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
-    // ✅ Clone the request so we can read the body multiple times
+    // Read the raw body
     const clonedRequest = request.clone();
-    
-    // 🔍 Read raw body for signature verification
     const rawBody = await request.text();
     
-    console.log("📦 Raw body received:");
-    console.log(rawBody);
-    console.log("📦 Length:", rawBody.length);
+    console.log("📦 PaymentPoint Webhook Received");
+    console.log("Timestamp:", new Date().toISOString());
+    console.log("Body length:", rawBody.length);
 
-    // Check if empty
+    // Check for empty body
     if (!rawBody || rawBody.length === 0) {
-      console.error("❌ Empty body - check if PaymentPoint is sending data");
+      console.error("❌ Empty body received");
       return NextResponse.json(
         { status: "error", message: "Empty request body" },
         { status: 400 }
       );
     }
 
-    // ✅ Parse JSON from the cloned request
+    // Parse JSON
     let data;
     try {
       data = await clonedRequest.json();
-      console.log("✅ Parsed data:", JSON.stringify(data, null, 2));
+      console.log("✅ JSON parsed successfully");
     } catch (err) {
-      console.error("⚠️ JSON parse failed:", err);
+      console.error("⚠️ JSON parse error:", err);
       return NextResponse.json(
         { status: "error", message: "Invalid JSON" },
         { status: 400 }
       );
     }
 
-    // ✅ Verify signature
+    // Get signature from headers
     const signature = request.headers.get("paymentpoint-signature");
+    
     if (!signature) {
-      console.warn("⚠️ Missing PaymentPoint-Signature header");
-      // For testing, you might want to skip this temporarily
-      // return NextResponse.json(
-      //   { status: "error", message: "Missing signature" },
-      //   { status: 400 }
-      // );
+      console.error("❌ Missing PaymentPoint-Signature header");
+      return NextResponse.json(
+        { status: "error", message: "Missing signature" },
+        { status: 400 }
+      );
     }
 
-    if (signature) {
-      const securityKey = process.env.PAYMENTPOINT_WEBHOOK_SECRET || 
-        "b6c78bbe842c103548b6e93360def7a9fee8d89b847e7579ac648206898149e699abec0fc05518faefbc86ce43269dcb90a7e9665895993cfa930fe0";
-
-      const calculatedSignature = crypto
-        .createHmac("sha256", securityKey)
-        .update(rawBody)
-        .digest("hex");
-
-      console.log("🔐 Signature check:");
-      console.log("  Received:", signature);
-      console.log("  Calculated:", calculatedSignature);
-
-      if (calculatedSignature !== signature) {
-        console.error("❌ Signature mismatch");
-        return NextResponse.json(
-          { status: "error", message: "Invalid signature" },
-          { status: 403 }
-        );
-      }
+    // Get webhook secret from environment
+    const secret = process.env.PAYMENTPOINT_WEBHOOK_SECRET;
+    
+    if (!secret) {
+      console.error("❌ PAYMENTPOINT_WEBHOOK_SECRET not set in environment");
+      return NextResponse.json(
+        { status: "error", message: "Webhook not configured" },
+        { status: 500 }
+      );
     }
 
-    // ✅ Process webhook data
+    // Calculate expected signature
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(rawBody)
+      .digest("hex");
+
+    // Verify signature
+    if (signature !== expectedSignature) {
+      console.error("❌ Signature verification failed");
+      console.log("Received signature:", signature);
+      console.log("Expected signature:", expectedSignature);
+      return NextResponse.json(
+        { status: "error", message: "Invalid signature" },
+        { status: 403 }
+      );
+    }
+
+    console.log("✅ Signature verified!");
+
+    // Extract payment data
     const {
       notification_status,
       transaction_id,
@@ -492,40 +498,84 @@ export async function POST(request: Request) {
       timestamp,
     } = data;
 
-    console.log("✅ PaymentPoint Webhook Processed:");
+    console.log("💰 Payment Details:");
     console.log({
       notification_status,
       transaction_id,
       amount_paid,
       settlement_amount,
       transaction_status,
-      sender_name: sender?.name,
-      receiver_account: receiver?.account_number,
       customer_email: customer?.email,
+      customer_id: customer?.customer_id,
       timestamp
     });
 
-    // 🔜 TODO: Update your database/wallet here
-    // Example:
-    // await updateUserWallet(customer.customer_id, amount_paid);
-    // await logTransaction(transaction_id, data);
+    // Process successful payments
+    if (transaction_status === "success" && notification_status === "payment_successful") {
+      console.log("✅ Processing successful payment...");
+      
+      // 🔥 TODO: Add your business logic here
+      // Examples:
+      
+      // 1. Update user wallet/balance
+      // await updateUserBalance(customer.customer_id, amount_paid);
+      
+      // 2. Save transaction to database
+      // await saveTransaction({
+      //   transactionId: transaction_id,
+      //   customerId: customer.customer_id,
+      //   amount: amount_paid,
+      //   status: 'completed',
+      //   timestamp: new Date(timestamp)
+      // });
+      
+      // 3. Send confirmation email
+      // await sendEmail({
+      //   to: customer.email,
+      //   subject: 'Payment Successful',
+      //   amount: amount_paid,
+      //   transactionId: transaction_id
+      // });
+      
+      // 4. Trigger other services
+      // await notifyOtherServices(transaction_id);
+      
+      console.log("✅ Payment processed successfully!");
+    } else {
+      console.warn("⚠️ Non-successful payment status:", transaction_status);
+      // Handle failed/pending payments if needed
+    }
 
+    // Always return 200 to acknowledge webhook receipt
     return NextResponse.json(
-      { status: "success", message: "Webhook processed successfully" },
+      { 
+        status: "success", 
+        message: "Webhook processed",
+        transaction_id 
+      },
       { status: 200 }
     );
+
   } catch (err: any) {
     console.error("🔥 Webhook error:", err);
+    console.error("Error stack:", err.stack);
+    
+    // Still return 200 so PaymentPoint doesn't retry
     return NextResponse.json(
       { status: "error", message: err.message },
-      { status: 500 }
+      { status: 200 } // Return 200 to prevent retries
     );
   }
 }
 
+// Health check endpoint
 export async function GET() {
+  const hasSecret = !!process.env.PAYMENTPOINT_WEBHOOK_SECRET;
+  
   return NextResponse.json({
     status: "ok",
     message: "PaymentPoint webhook is active 🚀",
+    configured: hasSecret,
+    timestamp: new Date().toISOString()
   });
 }
