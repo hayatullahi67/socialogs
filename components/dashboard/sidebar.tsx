@@ -8,7 +8,7 @@ import SignOutButton from "./signout-button"
 
 const menuItems = [
   { icon: ShoppingBasket, label: "Purchases", href: "/purchases" },
-  { icon: Wallet, label: "Add Funds", href: "/add-funds" },
+  // { icon: Wallet, label: "Add Funds", href: "/add-funds" },
   { icon: ArrowLeftRight, label: "Transactions", href: "/transactions" },
   { icon: UsersRound, label: "Referrals", href: "/referrals" },
   { icon: Headset, label: "Support", href: "/support" },
